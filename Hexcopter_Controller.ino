@@ -109,6 +109,8 @@ void setup() {
   GryoZCharacteristic.setValue(0.0f);
 
   pwm.begin();
+
+    //The below message is taken from the sample project for controlling the Adafruit 1411 shield
     /*
    * In theory the internal oscillator (clock) is 25MHz but it really isn't
    * that precise. You can 'calibrate' this by tweaking this number until
@@ -245,6 +247,8 @@ void loop() {
   
 }
 
+//precision_map is a clone of the standard lib map function which uses doubles instead of longs
+//to enable using the logic for mapping values 0-1 to a different range (see mapping motor speeds)
 double precision_map(double x, double in_min, double in_max, double out_min, double out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }

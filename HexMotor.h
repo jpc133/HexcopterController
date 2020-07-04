@@ -1,8 +1,8 @@
+#pragma once
 /*
   Motor.h
   Created by Jonathan Clarke, June 25th 2020
 */
-#ifndef HexMotor_h
 #define HexMotor_h
 
 #include "Arduino.h"
@@ -19,7 +19,4 @@ class HexMotor
     int MotorNumber;
     int Pin;
   private:
-    double _CalculateSpeed(double throttle, double pitch, double roll, double yaw);
 };
-
-#endif
