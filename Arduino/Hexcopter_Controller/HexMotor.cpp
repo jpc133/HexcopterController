@@ -1,6 +1,6 @@
 /*
   Motor.h
-  Created by Jonathan Clarke, June 25th 2020
+  Created by Blake Clarke, June 25th 2020
 */
 #include "Arduino.h"
 #include "HexMotor.h"

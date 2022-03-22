@@ -20,7 +20,7 @@ This is being developed on a specific hexcopter which is operated in the UK in a
 
 1 x Turnigy IA8 Receiver (AFHDS 2A system) and Turnigy 9X Transmitter with module for the receiver
 
-1 x Arduino 101 (This was chosen for it's built in IMU and Bluetooth but in future this may be swapped for an Arduino MEGA or similar with I2C based IMU and Bluetooth) 
+1 x Arduino 101 OR Arduino UNO Wifi Rev 2 (Freezing issues encountered with the 101 but not the UNO, use the 101 with caution)
 
 1 x Adafruit Servo shield 16 x 12bit PWM (part#: 1411)
 

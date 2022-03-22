@@ -1,7 +1,7 @@
 #pragma once
 /*
   Motor.h
-  Created by Jonathan Clarke, June 25th 2020
+  Created by Blake Clarke, June 25th 2020
 */
 #define HexMotor_h
 
