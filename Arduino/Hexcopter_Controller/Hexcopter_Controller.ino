@@ -1,12 +1,23 @@
+#if defined(ARDUINO_ARC32_TOOLS)
+  #define BOARD  101
+#else
+  #define BOARD  UNO
+#endif
+
 #include "Arduino.h"
 #include <Adafruit_PWMServoDriver.h>
-#include <CurieIMU.h>
-#include <CurieBLE.h>
-#include "CurieTimerOne.h"
+#if BOARD == 101
+  #include <CurieIMU.h>
+  #include <CurieBLE.h>
+  #include "CurieTimerOne.h"
+#endif
+#if BOARD == UNO
+  #include <Arduino_LSM6DS3.h>
+#endif
 #include <MadgwickAHRS.h>
 #include "HexMotor.h"
 #include <math.h>
-
+    
 //Radio Pins
 byte THROTTLE_IN_PIN = 10;
 byte ROLL_IN_PIN = 8;
@@ -69,17 +80,26 @@ void setup() {
   motors[3] = {4, 4, true, 0.0,-1.0};
   motors[4] = {5, 5, false, -positive_Motor_X_Offset,-positive_Motor_Y_Offset};
   motors[5] = {6, 6, true, -positive_Motor_X_Offset,positive_Motor_Y_Offset};
- 
+
+ #if BOARD == 101
   // start the IMU and filter
   CurieIMU.begin();
   CurieIMU.setGyroRate(25);
   CurieIMU.setAccelerometerRate(25);
-  filter.begin(25);
-
+  
   // Set the accelerometer range to 2G
   CurieIMU.setAccelerometerRange(2);
   // Set the gyroscope range to 250 degrees/second
   CurieIMU.setGyroRange(250);
+ #else
+  if (!IMU.begin()) {
+    Serial.println("Failed to initialize IMU!");
+    while (1);
+  }
+ #endif
+
+  filter.begin(25);
+
 
   pwm.begin();
 
@@ -121,9 +141,9 @@ void loop() {
   float gx, gy, gz;
   float roll, pitch, heading;
 
-  // read raw data from CurieIMU
+ // read raw data from IMU
+ #if BOARD == 101
   CurieIMU.readMotionSensor(aix, aiy, aiz, gix, giy, giz);
-
   // convert from raw data to gravity and degrees/second units
   ax = convertRawAcceleration(aix);
   ay = convertRawAcceleration(aiy);
@@ -131,6 +151,14 @@ void loop() {
   gx = convertRawGyro(gix);
   gy = convertRawGyro(giy);
   gz = convertRawGyro(giz);
+ #else
+  if (IMU.accelerationAvailable()) {
+      IMU.readAcceleration(ax, ay, az);
+  }
+  if (IMU.gyroscopeAvailable()){
+    IMU.readGyroscope(gx, gy, gz);
+  }
+ #endif
 
   // update the filter, which computes orientation
   filter.updateIMU(gx, gy, gz, ax, ay, az);
@@ -152,42 +180,42 @@ void loop() {
 
   //Throttle
   pwm_throttle = pulseIn(THROTTLE_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
-  Serial.print(pwm_throttle);
-  Serial.print(",");
   double pwm_throttle_converted = ((pwm_throttle - 1069.0)/850.0);
   //Serial.println(pwm_throttle_converted);
-  if(pwm_throttle < 900){
+  if(pwm_throttle < 900 || pwm_throttle_converted < 0.01){
     pwm_throttle_converted = 0;
   }
+  Serial.print(pwm_throttle_converted);
+  Serial.print(",");
 
   //Roll
   pwm_roll = pulseIn(ROLL_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
-  Serial.print(pwm_roll);
-  Serial.print(",");
   double pwm_roll_converted = (((pwm_roll - 1069.0)/850.0) * 2)-1;
   //Serial.println(pwm_roll_converted);
-  if(pwm_roll < 900){
+  if(pwm_roll < 900 || pwm_roll_converted < 0.01){
     pwm_roll_converted = 0;
   }
+  Serial.print(pwm_roll_converted);
+  Serial.print(",");
 
   //Pitch
   pwm_pitch = pulseIn(PITCH_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
-  Serial.print(pwm_pitch);
-  Serial.print(",");
   double pwm_pitch_converted = (((pwm_pitch - 1069.0)/850.0) * 2)-1;
   //Serial.println(pwm_pitch_converted);
-  if(pwm_pitch < 900){
+  if(pwm_pitch < 900 || pwm_pitch_converted < 0.01){
     pwm_pitch_converted = 0;
   }
+  Serial.print(pwm_pitch_converted);
+  Serial.print(",");
 
   //Yaw
   pwm_yaw = pulseIn(YAW_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
-  Serial.print(pwm_yaw);
-  Serial.print("]}");
   double pwm_yaw_converted = (((pwm_yaw - 1069.0)/850.0) * 2)-1;
-  if(pwm_yaw < 900){
+  if(pwm_yaw < 900 || pwm_yaw_converted < 0.01){
     pwm_yaw_converted = 0;
   }
+  Serial.print(pwm_yaw_converted);
+  Serial.print("]}");
   
   double motorSpeeds[MOTORS_AVAILABLE] = {};
   double maxSpeed = 0;
@@ -229,10 +257,19 @@ float convertRawAcceleration(int aRaw) {
 }
 
 float convertRawGyro(int gRaw) {
+ float g;
+
+ #if BOARD == 101
   // since we are using 250 degrees/seconds range
   // -250 maps to a raw value of -32768
   // +250 maps to a raw value of 32767
- 
-  float g = (gRaw * 250.0) / 32768.0;
+  g = (gRaw * 250.0) / 32768.0;
+ #else
+  // since we are using 2000 degrees/seconds range
+  // -2000 maps to a raw value of -32768
+  // +2000 maps to a raw value of 32767
+  g = (gRaw * 2000.0) / 32768.0;
+ #endif
+
   return g;
 }
