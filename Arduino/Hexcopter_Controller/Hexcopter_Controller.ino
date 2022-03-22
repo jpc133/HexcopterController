@@ -24,6 +24,8 @@ byte ROLL_IN_PIN = 8;
 byte PITCH_IN_PIN = 9;
 byte YAW_IN_PIN = 11;
 
+byte ACC_IN_PIN = 12;
+
 //PWM Driver Variables
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define PWM_MIN  205.0 // This is the 'minimum' pulse length count (out of 4096)
@@ -59,13 +61,11 @@ double positive_Motor_Y_Offset = 0.5; //0.5 = cos(60deg)
  
 //Radio Values
 int pwm_throttle;
-double pwm_throttle_old = 0;
 int pwm_roll;
-double pwm_roll_old = 0.5;
 int pwm_pitch;
-double pwm_pitch_old = 0.5;
 int pwm_yaw;
-double pwm_yaw_old = 0.5;
+
+int pwm_acc;
 
 Madgwick filter;
 unsigned long microsPerReading, microsPrevious;
@@ -215,7 +215,12 @@ void loop() {
     pwm_yaw_converted = 0;
   }
   Serial.print(pwm_yaw_converted);
-  Serial.print("]}");
+  Serial.print("]");
+
+  pwm_acc = pulseIn(ACC_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
+  Serial.print(", acc: ");
+  Serial.print(pwm_acc);
+  Serial.print("}");
   
   double motorSpeeds[MOTORS_AVAILABLE] = {};
   double maxSpeed = 0;
