@@ -182,7 +182,7 @@ void loop() {
   pwm_throttle = pulseIn(THROTTLE_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
   double pwm_throttle_converted = ((pwm_throttle - 1069.0)/850.0);
   //Serial.println(pwm_throttle_converted);
-  if(pwm_throttle < 900 || pwm_throttle_converted < 0.01){
+  if(pwm_throttle < 900 || (pwm_throttle_converted > 0.01 && pwm_throttle_converted < 0.01)){
     pwm_throttle_converted = 0;
   }
   Serial.print(pwm_throttle_converted);
@@ -192,7 +192,7 @@ void loop() {
   pwm_roll = pulseIn(ROLL_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
   double pwm_roll_converted = (((pwm_roll - 1069.0)/850.0) * 2)-1;
   //Serial.println(pwm_roll_converted);
-  if(pwm_roll < 900 || pwm_roll_converted < 0.01){
+  if(pwm_roll < 900 || (pwm_roll_converted > 0.01 && pwm_roll_converted < 0.01)){
     pwm_roll_converted = 0;
   }
   Serial.print(pwm_roll_converted);
@@ -202,7 +202,7 @@ void loop() {
   pwm_pitch = pulseIn(PITCH_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
   double pwm_pitch_converted = (((pwm_pitch - 1069.0)/850.0) * 2)-1;
   //Serial.println(pwm_pitch_converted);
-  if(pwm_pitch < 900 || pwm_pitch_converted < 0.01){
+  if(pwm_pitch < 900 || (pwm_pitch_converted > 0.01 && pwm_pitch_converted < 0.01)){
     pwm_pitch_converted = 0;
   }
   Serial.print(pwm_pitch_converted);
@@ -211,7 +211,7 @@ void loop() {
   //Yaw
   pwm_yaw = pulseIn(YAW_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
   double pwm_yaw_converted = (((pwm_yaw - 1069.0)/850.0) * 2)-1;
-  if(pwm_yaw < 900 || pwm_yaw_converted < 0.01){
+  if(pwm_yaw < 900 || (pwm_yaw_converted > 0.01 && pwm_yaw_converted < 0.01)){
     pwm_yaw_converted = 0;
   }
   Serial.print(pwm_yaw_converted);
