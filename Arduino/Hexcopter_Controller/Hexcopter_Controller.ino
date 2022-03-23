@@ -17,6 +17,7 @@
 #include <MadgwickAHRS.h>
 #include "HexMotor.h"
 #include <math.h>
+#include "PID.h"
     
 //Radio Pins
 byte THROTTLE_IN_PIN = 10;
@@ -70,6 +71,12 @@ int pwm_acc;
 Madgwick filter;
 unsigned long microsPerReading, microsPrevious;
 float accelScale, gyroScale;
+
+//PID Controllers
+PID pid_throttle = PID(0.1, 100, -100, 0.1, 0, 1);
+PID pid_x = PID(0.1, 100, -100, 0.1, -1, 1);
+PID pid_y = PID(0.1, 100, -100, 0.1, -1, 1);
+PID pid_z = PID(0.1, 100, -100, 0.1, -1, 1);
 
 void setup() {
   Serial.begin(9600);
@@ -140,6 +147,7 @@ void loop() {
   float ax, ay, az;
   float gx, gy, gz;
   float roll, pitch, heading;
+  bool radioFailure = false;
 
  // read raw data from IMU
  #if BOARD == 101
@@ -180,52 +188,90 @@ void loop() {
 
   //Throttle
   pwm_throttle = pulseIn(THROTTLE_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
-  double pwm_throttle_converted = ((pwm_throttle - 1069.0)/850.0);
-  //Serial.println(pwm_throttle_converted);
-  if(pwm_throttle < 900 || (pwm_throttle_converted > 0.01 && pwm_throttle_converted < 0.01)){
+  double pwm_throttle_converted = convertRadioPulseLengthToControlValue(pwm_throttle, 0.01);
+  if(pwm_throttle < 900){ //We can assume if this is out of bounds that the radio has lost connection
     pwm_throttle_converted = 0;
+    radioFailure = true;
   }
+  Serial.print(pwm_throttle);
+  Serial.print(",");
   Serial.print(pwm_throttle_converted);
   Serial.print(",");
-
-  //Roll
-  pwm_roll = pulseIn(ROLL_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
-  double pwm_roll_converted = (((pwm_roll - 1069.0)/850.0) * 2)-1;
-  //Serial.println(pwm_roll_converted);
-  if(pwm_roll < 900 || (pwm_roll_converted > 0.01 && pwm_roll_converted < 0.01)){
-    pwm_roll_converted = 0;
-  }
-  Serial.print(pwm_roll_converted);
-  Serial.print(",");
-
-  //Pitch
-  pwm_pitch = pulseIn(PITCH_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
-  double pwm_pitch_converted = (((pwm_pitch - 1069.0)/850.0) * 2)-1;
-  //Serial.println(pwm_pitch_converted);
-  if(pwm_pitch < 900 || (pwm_pitch_converted > 0.01 && pwm_pitch_converted < 0.01)){
-    pwm_pitch_converted = 0;
-  }
-  Serial.print(pwm_pitch_converted);
-  Serial.print(",");
-
-  //Yaw
-  pwm_yaw = pulseIn(YAW_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
-  double pwm_yaw_converted = (((pwm_yaw - 1069.0)/850.0) * 2)-1;
-  if(pwm_yaw < 900 || (pwm_yaw_converted > 0.01 && pwm_yaw_converted < 0.01)){
-    pwm_yaw_converted = 0;
-  }
-  Serial.print(pwm_yaw_converted);
-  Serial.print("]");
 
   pwm_acc = pulseIn(ACC_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
   Serial.print(", acc: ");
   Serial.print(pwm_acc);
+
+  Serial.print(", radioConnected: ");
+  Serial.print(!radioFailure);
   Serial.print("}");
+
+  double controlOutput_throttle;
+  double controlOutput_x;
+  double controlOutput_y;
+  double controlOutput_z;
   
+  //Decide which control values to use
+  if(pwm_acc < 900 || pwm_acc > 1400){ //Autopilot
+    //Calculate any autopilot / control adjustments
+    double pidControlValue_throttle = pid_throttle.Calculate(0, 0); //TODO: Replace the second 0 with altitude
+    double pidControlValue_x = pid_x.Calculate(0, roll);
+    double pidControlValue_y = pid_y.Calculate(0, pitch);
+    double pidControlValue_z = pid_z.Calculate(0, heading);
+    
+    controlOutput_throttle = pwm_throttle_converted; //TODO: Replace throttle with pid value
+    controlOutput_x = pidControlValue_x;
+    controlOutput_y = pidControlValue_y;
+    controlOutput_z = pidControlValue_z;
+  }
+  else{ //Control values
+    //Roll
+    pwm_roll = pulseIn(ROLL_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
+    double pwm_roll_converted = convertRadioPulseLengthToControlValue(pwm_roll, 0.01);
+    if(pwm_roll < 900){ //We can assume if this is out of bounds that the radio has lost connection
+      pwm_roll_converted = 0;
+      radioFailure = true;
+    }
+    Serial.print(pwm_roll);
+    Serial.print(",");
+    Serial.print(pwm_roll_converted);
+    Serial.print(",");
+  
+    //Pitch
+    pwm_pitch = pulseIn(PITCH_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
+    double pwm_pitch_converted = convertRadioPulseLengthToControlValue(pwm_pitch, 0.01);
+    if(pwm_pitch < 900){ //We can assume if this is out of bounds that the radio has lost connection
+      pwm_pitch_converted = 0;
+      radioFailure = true;
+    }
+    Serial.print(pwm_pitch);
+    Serial.print(",");
+    Serial.print(pwm_pitch_converted);
+    Serial.print(",");
+  
+    //Yaw
+    pwm_yaw = pulseIn(YAW_IN_PIN, HIGH, PULSE_IN_TIMEOUT);
+    double pwm_yaw_converted = convertRadioPulseLengthToControlValue(pwm_yaw, 0.01);
+    if(pwm_yaw < 900){ //We can assume if this is out of bounds that the radio has lost connection
+      pwm_yaw_converted = 0;
+      radioFailure = true;
+    }
+    Serial.print(pwm_yaw);
+    Serial.print(",");
+    Serial.print(pwm_yaw_converted);
+    Serial.print("]");
+    
+    controlOutput_throttle = pwm_throttle_converted;
+    controlOutput_x = pwm_pitch_converted;
+    controlOutput_y = pwm_roll_converted;
+    controlOutput_z = pwm_yaw_converted;
+  }
+
+  //Calculate motor speeds
   double motorSpeeds[MOTORS_AVAILABLE] = {};
   double maxSpeed = 0;
   for(uint16_t i = 1; i <= MOTORS_AVAILABLE; i++) {    
-    motorSpeeds[i-1] = motors[i-1].CalculateSpeed(pwm_throttle_converted, pwm_pitch_converted, pwm_roll_converted, pwm_yaw_converted);
+    motorSpeeds[i-1] = motors[i-1].CalculateSpeed(controlOutput_throttle, controlOutput_x, controlOutput_y, controlOutput_z);
     if(motorSpeeds[i-1] > maxSpeed){
       maxSpeed = motorSpeeds[i-1];
     }
@@ -277,4 +323,12 @@ float convertRawGyro(int gRaw) {
  #endif
 
   return g;
+}
+
+float convertRadioPulseLengthToControlValue(double pulseLength, double deadzone){
+  double convertedValue = (((pulseLength - 1069.0)/850.0) * 2)-1;
+  if(convertedValue > -deadzone && convertedValue < deadzone){
+    convertedValue = 0;
+  }
+  return convertedValue;
 }
